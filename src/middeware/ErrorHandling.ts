@@ -1,18 +1,24 @@
 import { NextFunction, Request, Response } from "express";
 
+interface CustomError extends Error {
+  status?: number;
+  statusCode?: number;
+}
+
 const errorHandling = (
-  err: any,
+  err: CustomError,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  console.log(err);
+  console.error("Error:", err);
 
-  const statusCode = err.status || 500;
+  const statusCode = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
 
   res.status(statusCode).json({
-    message: err.message || "Internal Server Error",
-    error: err,
+    message,
+    ...(process.env.NODE_ENV === "development" && { error: err.stack }),
   });
 };
 
