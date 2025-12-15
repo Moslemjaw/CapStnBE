@@ -6,6 +6,7 @@ import cors from "cors";
 import path from "path";
 import dotenv from "dotenv";
 import connectDB from "./database";
+import userRouter from "./api/User/user.routers";
 
 const app = express();
 
@@ -17,11 +18,14 @@ app.use(express.json());
 app.use("/media", express.static(path.join(__dirname, "../uploads")));
 
 //routers ...
+app.use("/api/user", userRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandling);
 
-app.listen(process.env.PORT || 8000, () => {
-  console.log(`Server is running on port ${process.env.PORT}`);
+const PORT = Number(process.env.PORT) || 8000;
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
   connectDB();
 });
