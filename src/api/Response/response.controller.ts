@@ -1,5 +1,7 @@
 import { NextFunction, Request, Response as ExpressResponse } from "express";
 import Response from "../../models/Response";
+import mongoose from "mongoose";
+import { customRequestType } from "../../types/http";
 
 const createResponse = async (
   req: Request,
@@ -17,9 +19,15 @@ const createResponse = async (
       trustImpact,
       answers,
     } = req.body;
+
+    const ownerId = (req as customRequestType).user?.id;
+    if (!ownerId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     const response = await Response.create({
-      surveyId,
-      userId,
+      surveyId: new mongoose.Types.ObjectId(surveyId),
+      userId: new mongoose.Types.ObjectId(ownerId),
       startedAt,
       submittedAt,
       durationMs,
