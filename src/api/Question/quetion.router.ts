@@ -9,11 +9,11 @@ import {
 } from "./question.controller";
 const questionRouter = Router();
 
-questionRouter.post("/", createQuestion);
+questionRouter.get("/", getQuestions);
+questionRouter.get("/survey/:surveyId", getQuestionsBySurveyId);
 questionRouter.get("/:id", getQuestionById);
+questionRouter.post("/", createQuestion);
 questionRouter.put("/:id", updateQuestion);
 questionRouter.delete("/:id", deleteQuestion);
-questionRouter.get("/survey/:surveyId", getQuestionsBySurveyId);
-questionRouter.get("/", getQuestions);
 
 export default questionRouter;

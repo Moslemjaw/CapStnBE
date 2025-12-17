@@ -15,13 +15,13 @@ import {
 
 const surveyRouter = Router();
 
-surveyRouter.post("/", createSurvey);
+surveyRouter.get("/published", getPublishedSurveys);
+surveyRouter.get("/unpublished", getUnpublishedSurveys);
 surveyRouter.get("/:id", getSurveyById);
 surveyRouter.put("/:id", updateSurvey);
 surveyRouter.delete("/:id", deleteSurvey);
+surveyRouter.post("/", createSurvey);
 surveyRouter.post("/publish/:id", publishSurvey);
 surveyRouter.post("/unpublish/:id", unpublishSurvey);
-surveyRouter.get("/published", getPublishedSurveys);
-surveyRouter.get("/unpublished", getUnpublishedSurveys);
 
 export default surveyRouter;
