@@ -11,12 +11,12 @@ import {
 
 const responseRouter = Router();
 
-responseRouter.post("/", createResponse);
-responseRouter.get("/:id", getResponseById);
-responseRouter.put("/:id", updateResponse);
-responseRouter.delete("/:id", deleteResponse);
+responseRouter.get("/", getResponses);
 responseRouter.get("/survey/:surveyId", getResponsesBySurveyId);
 responseRouter.get("/user/:userId", getResponsesByUserId);
-responseRouter.get("/", getResponses);
+responseRouter.get("/:id", getResponseById);
+responseRouter.post("/", createResponse);
+responseRouter.put("/:id", updateResponse);
+responseRouter.delete("/:id", deleteResponse);
 
 export default responseRouter;

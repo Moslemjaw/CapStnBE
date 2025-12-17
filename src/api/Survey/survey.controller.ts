@@ -9,6 +9,7 @@ const createSurvey = async (
   next: NextFunction
 ) => {
   try {
+
     const { title, description, rewardPoints, estimatedMinutes, draft } =
       req.body;
 
@@ -16,6 +17,7 @@ const createSurvey = async (
     if (!creatorId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
+
     const survey = await Survey.create({
       title,
       description,
@@ -23,8 +25,8 @@ const createSurvey = async (
       estimatedMinutes,
       draft,
       creatorId: new mongoose.Types.ObjectId(creatorId),
-    });
 
+    });
     res.status(201).json({ message: "Survey created successfully", survey });
   } catch (error) {
     next(error);

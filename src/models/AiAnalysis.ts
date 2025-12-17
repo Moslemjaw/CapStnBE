@@ -116,7 +116,7 @@ const dataSchema = new Schema(
   },
   { _id: false }
 );
-
+// In aiAnalysisSchema, add progress field:
 const aiAnalysisSchema = new Schema(
   {
     ownerId: {
@@ -124,25 +124,27 @@ const aiAnalysisSchema = new Schema(
       ref: "User",
       required: true,
     },
-
     surveyIds: {
       type: [Schema.Types.ObjectId],
       ref: "Survey",
       required: true,
     },
-
     type: {
       type: String,
       enum: ["single", "multi"],
       required: true,
     },
-
     status: {
       type: String,
       enum: ["processing", "ready", "failed"],
       required: true,
     },
-
+    progress: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0,
+    },
     data: {
       type: dataSchema,
       required: true,

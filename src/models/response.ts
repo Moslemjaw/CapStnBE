@@ -23,6 +23,6 @@ const responseSchema = new Schema({
   },
 });
 
-const Responses = mongoose.model("Response", responseSchema);
+const Responses = model("Response", responseSchema);
 
 export default Responses;
