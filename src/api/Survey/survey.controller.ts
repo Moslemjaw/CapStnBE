@@ -9,7 +9,6 @@ const createSurvey = async (
   next: NextFunction
 ) => {
   try {
-
     const { title, description, rewardPoints, estimatedMinutes, draft } =
       req.body;
 
@@ -25,7 +24,6 @@ const createSurvey = async (
       estimatedMinutes,
       draft,
       creatorId: new mongoose.Types.ObjectId(creatorId),
-
     });
     res.status(201).json({ message: "Survey created successfully", survey });
   } catch (error) {
@@ -55,6 +53,7 @@ const updateSurvey = async (
   try {
     const { id } = req.params;
     const { title, description, rewardPoints, estimatedMinutes } = req.body;
+    // check if inputs are empty or not
     const survey = await Survey.findByIdAndUpdate(id, {
       title,
       description,

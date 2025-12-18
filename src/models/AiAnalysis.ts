@@ -145,6 +145,19 @@ const aiAnalysisSchema = new Schema(
       max: 100,
       default: 0,
     },
+    idMapping: {
+      type: {
+        surveys: {
+          type: Map,
+          of: String,
+        },
+        questions: {
+          type: Map,
+          of: String,
+        },
+      },
+      required: false,
+    },
     data: {
       type: dataSchema,
       required: true,

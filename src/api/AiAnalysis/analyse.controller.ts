@@ -131,6 +131,14 @@ Optional fields (return empty/default values if not applicable):
 - caveats: Return an empty array [] if there are no caveats or limitations to note.
 - examples: Within each insight, return an empty array [] if there are no example responses to include.
 
+Grounding & fidelity rules:
+- Do not fabricate response content. Any example in insights.examples must be copied verbatim from the provided responsesByQuestion arrays.
+- If a field would require invented content (e.g., examples), leave it empty instead of guessing.
+- Do not invent question or survey identifiers. surveys[].surveyId in the output must match one of the input surveys[].surveyId values.
+- Do not refer to questions as q1/q2/etc unless those are the actual questionId values in the input. Prefer using question text if needed.
+- Avoid strong claims like "preference" or "trend" when responseCountUsed is small (especially 1) or when answers are repetitive/low-information.
+- If repetition appears at scale (many respondents with identical or near-identical answers across multiple questions), include it as an insight and also mention it in dataQualityNotes. Describe it as an observed pattern (and quantify it if possible from the provided data). Do not assert intent (e.g., bots) unless the data directly supports it.
+
 All other fields are required and must have actual values (not empty).
 
 Output rules:
@@ -173,22 +181,28 @@ const fetchAndTransformSurveyData = async (
   const responses = await Responses.find({
     surveyId: { $in: surveyObjectIds },
     isFlaggedSpam: { $ne: true },
-  }).select("surveyId userId answers");
+  }).select("surveyId userId answers submittedAt");
 
   // Create short ID mappings
   const surveyIdMap = new Map<string, string>(); // realId -> shortId
   const questionIdMap = new Map<string, string>(); // realId -> shortId
+  const reverseSurveyIdMap = new Map<string, string>(); // shortId -> realId
+  const reverseQuestionIdMap = new Map<string, string>(); // shortId -> realId
 
   // Map surveys to short IDs (s1, s2, s3, ...)
   surveys.forEach((survey, index) => {
     const shortId = `s${index + 1}`;
-    surveyIdMap.set(survey._id.toString(), shortId);
+    const realId = survey._id.toString();
+    surveyIdMap.set(realId, shortId);
+    reverseSurveyIdMap.set(shortId, realId);
   });
 
   // Map questions to short IDs (q1, q2, q3, ...)
   questions.forEach((question, index) => {
     const shortId = `q${index + 1}`;
-    questionIdMap.set(question._id.toString(), shortId);
+    const realId = question._id.toString();
+    questionIdMap.set(realId, shortId);
+    reverseQuestionIdMap.set(shortId, realId);
   });
 
   // 4. Transform surveys to the format with short IDs
@@ -268,6 +282,9 @@ const fetchAndTransformSurveyData = async (
     },
     responsesByQuestion: responsesByQuestion,
     responseCount: responseCount,
+    // Include reverse maps for converting back to real IDs
+    reverseSurveyIdMap: Object.fromEntries(reverseSurveyIdMap),
+    reverseQuestionIdMap: Object.fromEntries(reverseQuestionIdMap),
   };
 
   console.log("Transformed survey data:", JSON.stringify(result, null, 2));
@@ -285,6 +302,26 @@ const mapQuestionType = (dbType: string): string => {
     checkbox: "mcq",
   };
   return typeMap[dbType] || "short-text";
+};
+
+// Function to convert short IDs back to real IDs in AI response
+const convertShortIdsToRealIds = (
+  aiResponse: any,
+  reverseSurveyMap: { [key: string]: string },
+  reverseQuestionMap: { [key: string]: string }
+) => {
+  // Clone the response to avoid mutation
+  const converted = JSON.parse(JSON.stringify(aiResponse));
+
+  // Convert survey IDs in the surveys array
+  if (converted.surveys && Array.isArray(converted.surveys)) {
+    converted.surveys = converted.surveys.map((survey: any) => ({
+      ...survey,
+      surveyId: reverseSurveyMap[survey.surveyId] || survey.surveyId,
+    }));
+  }
+
+  return converted;
 };
 
 const testAI = async (req: Request, res: Response, next: NextFunction) => {
@@ -380,14 +417,21 @@ const analyzeSurveyData = async (
     const response = completion.choices[0]?.message?.content;
     const parsedResponse = JSON.parse(response || "{}");
 
+    // Convert short IDs back to real IDs
+    const convertedResponse = convertShortIdsToRealIds(
+      parsedResponse,
+      surveyData.reverseSurveyIdMap,
+      surveyData.reverseQuestionIdMap
+    );
+
     // Update progress: Finalizing (90%)
     await AiAnalysis.findByIdAndUpdate(analysisId, { progress: 90 });
 
-    console.log("=== OpenAI Analysis Response ===");
-    console.log(JSON.stringify(parsedResponse, null, 2));
+    console.log("=== OpenAI Analysis Response (with real IDs) ===");
+    console.log(JSON.stringify(convertedResponse, null, 2));
     console.log("=== End of Response ===");
 
-    return parsedResponse;
+    return convertedResponse;
   } catch (error) {
     console.error("Error in analyzeSurveyData:", error);
     throw error;
@@ -467,12 +511,16 @@ const createAnalysis = async (
       type,
       status: "processing",
       progress: 0,
+      idMapping: {
+        surveys: surveyData.reverseSurveyIdMap,
+        questions: surveyData.reverseQuestionIdMap,
+      },
       data: {
-        overview: "",
+        overview: "Analysis in progress...",
         surveys: [],
         dataQualityNotes: {
           confidenceScore: 0,
-          confidenceExplanation: "",
+          confidenceExplanation: "Analysis pending completion...",
           notes: [],
         },
       },
@@ -551,6 +599,8 @@ const getAnalysisStatus = async (
 
     res.status(200).json({
       analysisId: analysis._id,
+      surveyIds: analysis.surveyIds,
+      type: analysis.type,
       status: analysis.status,
       progress: analysis.progress,
       data: analysis.status === "ready" ? analysis.data : null,
@@ -564,4 +614,49 @@ const getAnalysisStatus = async (
   }
 };
 
-export { testAI, analyzeSurveyData, createAnalysis, getAnalysisStatus };
+// Get all analyses for the authenticated user
+const getAllAnalyses = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const customReq = req as customRequestType;
+    const ownerId = customReq.user?.id;
+
+    if (!ownerId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const analyses = await AiAnalysis.find({
+      ownerId: new mongoose.Types.ObjectId(ownerId),
+    }).sort({ createdAt: -1 }); // Sort by newest first
+
+    res.status(200).json({
+      message: "Analyses fetched successfully",
+      analyses: analyses.map((analysis) => ({
+        analysisId: analysis._id,
+        surveyIds: analysis.surveyIds,
+        type: analysis.type,
+        status: analysis.status,
+        progress: analysis.progress,
+        data: analysis.status === "ready" ? analysis.data : null,
+        createdAt: analysis.createdAt,
+        updatedAt: analysis.updatedAt,
+      })),
+      count: analyses.length,
+    });
+  } catch (error) {
+    console.error("=== Get All Analyses Error ===");
+    console.error(error);
+    next(error);
+  }
+};
+
+export {
+  testAI,
+  analyzeSurveyData,
+  createAnalysis,
+  getAnalysisStatus,
+  getAllAnalyses,
+};

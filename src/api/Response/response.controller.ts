@@ -11,7 +11,6 @@ const createResponse = async (
   try {
     const {
       surveyId,
-      userId,
       startedAt,
       submittedAt,
       durationMs,

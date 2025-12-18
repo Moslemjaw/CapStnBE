@@ -19,6 +19,7 @@ const surveyRouter = Router();
 surveyRouter.get("/published", getPublishedSurveys);
 surveyRouter.get("/unpublished", getUnpublishedSurveys);
 surveyRouter.get("/:id", getSurveyById);
+// :ater check if the user is the creator of the survey for delete and update
 surveyRouter.put("/:id", updateSurvey);
 surveyRouter.delete("/:id", deleteSurvey);
 // Protected routes – require a valid JWT so we can set req.user.id as creatorId
