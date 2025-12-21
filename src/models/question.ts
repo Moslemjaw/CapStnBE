@@ -12,13 +12,7 @@ const questionSchema = new Schema(
     },
     type: {
       type: String,
-      enum: [
-        "text",
-        "multiple_choice",
-        "single_choice",
-        "dropdown",
-        "checkbox",
-      ],
+      enum: ["text", "multiple_choice", "single_choice"],
       required: true,
     },
     options: {

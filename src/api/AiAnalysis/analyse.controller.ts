@@ -113,6 +113,7 @@ Data rules:
 
 Task:
 - Produce a structured summary of the survey results.
+- In the overview, explicitly state how many responses were considered out of the total responseCount (e.g., "3 out of 5 responses were used") so omitted responses are clear.
 - Identify key findings from multiple-choice and numeric questions.
 - Extract insights from short-text answers.
 - Use the term "insights" (not "themes"). Each insight must include a "theme" field.
@@ -124,22 +125,26 @@ Confidence rules:
 - The confidenceScore must reflect sample size, missing answers, and consistency of patterns.
 - Always include a short confidenceExplanation justifying the score.
 - Do not inflate confidence when responseCount is small or when many answers are missing.
+- confidenceScore represents relative confidence in this analysis, not statistical significance.
+- confidenceScore must be consistent with caveats and dataQualityNotes.
 
-Optional fields (return empty/default values if not applicable):
-- responseCountUsed: Return 0 if you cannot determine the exact count of valid responses used.
-- correlations: Return an empty array [] if there are no correlations supported by index alignment.
+Optional fields:
+- responseCountUsed: If you cannot determine the exact count of valid responses used, return 0.
+- correlations: Return an empty array [] if no correlations are supported by index alignment.
 - caveats: Return an empty array [] if there are no caveats or limitations to note.
 - examples: Within each insight, return an empty array [] if there are no example responses to include.
 
 Grounding & fidelity rules:
+- Evaluate short-text responses relative to the question being asked. Do not treat concise answers as low-information if they appropriately address the question.
+- Consider a response low-information only if it is non-responsive, placeholder-like, or fails to meaningfully address the question (e.g., "test", "ok", ".", repeated tokens).
 - Do not fabricate response content. Any example in insights.examples must be copied verbatim from the provided responsesByQuestion arrays.
-- If a field would require invented content (e.g., examples), leave it empty instead of guessing.
+- If a field would require invented content, leave it empty instead of guessing.
 - Do not invent question or survey identifiers. surveys[].surveyId in the output must match one of the input surveys[].surveyId values.
-- Do not refer to questions as q1/q2/etc unless those are the actual questionId values in the input. Prefer using question text if needed.
-- Avoid strong claims like "preference" or "trend" when responseCountUsed is small (especially 1) or when answers are repetitive/low-information.
-- If repetition appears at scale (many respondents with identical or near-identical answers across multiple questions), include it as an insight and also mention it in dataQualityNotes. Describe it as an observed pattern (and quantify it if possible from the provided data). Do not assert intent (e.g., bots) unless the data directly supports it.
-
-All other fields are required and must have actual values (not empty).
+- Do not refer to questions by invented IDs. Prefer using the question text when referencing questions.
+- Avoid strong claims like "preference" or "trend" when responseCountUsed is small or when answers are repetitive or low-information.
+- If repetition appears at scale (many respondents with identical or near-identical answers across multiple questions), include it as an insight and also mention it in dataQualityNotes. Describe it as an observed pattern and quantify it when possible.
+- Every finding and insight must be directly supported by observable patterns in the provided data. If support is weak or ambiguous, state the limitation explicitly.
+- If the provided data is insufficient to fulfill a task requirement, explicitly state the limitation instead of inferring or extrapolating.
 
 Output rules:
 - Return JSON only.
