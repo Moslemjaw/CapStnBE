@@ -21,6 +21,15 @@ app.use(express.json());
 
 app.use("/media", express.static(path.join(__dirname, "../uploads")));
 
+// Health check endpoint for Digital Ocean
+app.get("/", (req, res) => {
+  res.status(200).json({ status: "ok", message: "API is running" });
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 //routers ...
 
 app.use("/analyse", aiRouter);
